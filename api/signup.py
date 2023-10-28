@@ -5,10 +5,10 @@ from sqlalchemy.orm import Session
 from db_config.sqlalchemy_connect import SessionFactory
 from domain.request.signup import SignupReq
 from domain.data.sqlalchemy_models import Signup
-from repository.sqlalchemy.signup import SignupRepository, LoginMemberRepository, MemberAttendanceRepository
+from repository.sqlalchemy.signup import SignupRepository
 from typing import List
 
-router = APIRouter()
+router = APIRouter(prefix='/signup', tags=['Signup'])
 
 
 def sess_db():
@@ -18,8 +18,7 @@ def sess_db():
     finally:
         db.close()
 
-
-@router.post("/signup/add")
+@router.post("/add")
 def add_signup(req: SignupReq, sess: Session = Depends(sess_db)):
     repo: SignupRepository = SignupRepository(sess)
     signup = Signup(password=req.password, username=req.username, id=req.id)
@@ -30,14 +29,14 @@ def add_signup(req: SignupReq, sess: Session = Depends(sess_db)):
         return JSONResponse(content={'message': 'create signup problem encountered'}, status_code=500)
 
 
-@router.get("/signup/list", response_model=List[SignupReq])
+@router.get("/list", response_model=List[SignupReq])
 def list_signup(sess: Session = Depends(sess_db)):
     repo: SignupRepository = SignupRepository(sess)
     result = repo.get_all_signup()
     return result
 
 
-@router.patch("/signup/update")
+@router.patch("/update")
 def update_signup(id: int, req: SignupReq, sess: Session = Depends(sess_db)):
     signup_dict = req.dict(exclude_unset=True)
     repo: SignupRepository = SignupRepository(sess)
@@ -48,7 +47,7 @@ def update_signup(id: int, req: SignupReq, sess: Session = Depends(sess_db)):
         return JSONResponse(content={'message': 'update profile error'}, status_code=500)
 
 
-@router.delete("/signup/delete/{id}")
+@router.delete("/delete/{id}")
 def delete_signup(id: int, sess: Session = Depends(sess_db)):
     repo: SignupRepository = SignupRepository(sess)
     result = repo.delete_signup(id)
@@ -58,22 +57,12 @@ def delete_signup(id: int, sess: Session = Depends(sess_db)):
         return JSONResponse(content={'message': 'delete profile error'}, status_code=500)
 
 
-@router.get("/signup/list/{id}", response_model=SignupReq)
+@router.get("/list/{id}", response_model=SignupReq)
 def get_signup(id: int, sess: Session = Depends(sess_db)):
     repo: SignupRepository = SignupRepository(sess)
     result = repo.get_signup(id)
     return result
 
 
-@router.get("/login/memberslist")
-def get_join_login_members(sess: Session = Depends(sess_db)):
-    repo: LoginMemberRepository = LoginMemberRepository(sess)
-    result = repo.join_login_members()
-    return result
 
 
-@router.get("/member/attendance")
-def get_join_member_attendance(sess: Session = Depends(sess_db)):
-    repo: MemberAttendanceRepository = MemberAttendanceRepository(sess)
-    result = repo.join_member_attendance()
-    return result

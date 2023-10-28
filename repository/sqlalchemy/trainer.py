@@ -10,18 +10,22 @@ class TrainerRepository:
     
     async def insert_trainer(self, trainer: Profile_Trainers) -> bool: 
         try:
-            print('PAYLOAD', trainer)
+            trainer = Profile_Trainers(**trainer)
+            
             self.sess.add(trainer)
             self.sess.commit()
-        except: 
-            return False 
+        except:
+            return False   
         
         return True
     
-    async def get_all_member(self):
+    async def get_trainer(self, trainer_id: int):
+        return self.sess.query(Profile_Trainers).filter(Profile_Trainers.id == trainer_id).one_or_none()
+    
+    async def get_all_trainers(self):
         return self.sess.query(Profile_Trainers).all()
     
-    async def remove_member(self, trainer_id: int):
+    async def remove_trainer(self, trainer_id: int):
         try:
             self.sess.query(Profile_Trainers).filter(Profile_Trainers.id == trainer_id).delete()
             self.sess.commit()
@@ -30,7 +34,7 @@ class TrainerRepository:
             return False
         return True
 
-    def update_member(self, id: int, details: Dict[str, Any]):
+    async def update_trainer(self, id: int, details: Dict[str, Any]):
         try:
             self.sess.query(Profile_Trainers).filter(Profile_Trainers.id == id).update(details)
             self.sess.commit()

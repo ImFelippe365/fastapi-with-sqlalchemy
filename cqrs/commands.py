@@ -1,6 +1,6 @@
 from typing import Dict, Any
 
-class ProfileTrainerCommand:
+class Command:
 
     def __init__(self):
         self._details: Dict[str, Any] = dict()

@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 
 class ProfileTrainersReq(BaseModel):
+    id: int
     firstname: str
     lastname: str
     age: int

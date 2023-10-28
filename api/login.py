@@ -1,15 +1,21 @@
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
+from fastapi.encoders import jsonable_encoder 
 
 from sqlalchemy.orm import Session
 from db_config.sqlalchemy_connect import SessionFactory
 from domain.request.login import LoginReq
-from domain.data.sqlalchemy_models import Login
-from repository.sqlalchemy.login import LoginRepository
 from typing import List
 
-router = APIRouter()
+from cqrs.commands import Command
+from cqrs.queries import ListQuery
 
+from cqrs.login.commands.create_handlers import AddLoginCommandHandler
+from cqrs.login.commands.update_handlers import UpdateLoginCommandHandler
+from cqrs.login.commands.delete_handlers import DeleteLoginCommandHandler
+from cqrs.login.query.query_handlers import ListLoginQueryHandler, GetLoginQueryHandler
+
+router = APIRouter(prefix='/login', tags=['Login'])
 
 def sess_db():
     db = SessionFactory()
@@ -18,49 +24,54 @@ def sess_db():
     finally:
         db.close()
 
+@router.get("/")
+async def list_all(sess: Session = Depends(sess_db)):
+    handler = ListLoginQueryHandler(sess)
+    query: ListQuery = await handler.handle()
+    
+    return JSONResponse(content=jsonable_encoder(query.records), status_code=200)
 
-@router.post("/login/add")
-async def add_login(req: LoginReq, sess: Session = Depends(sess_db)):
-    repo: LoginRepository = LoginRepository(sess)
-    login = Login(id=req.id, username=req.username, password=req.password, date_approved=req.date_approved,
-                  user_type=req.user_type)
-    result = repo.insert_login(login)
+@router.get("/{id}")
+async def list_by_id(id: int, sess: Session = Depends(sess_db)):
+    handler = GetLoginQueryHandler(sess)
+    query: ListQuery = await handler.handle(id)
+    
+    return JSONResponse(content=jsonable_encoder(query.records), status_code=200)
+
+@router.post("/add")
+async def create(req: LoginReq, sess: Session = Depends(sess_db)):
+    handler = AddLoginCommandHandler(sess)
+    body = req.dict()
+
+    command = Command()
+    command.details = body
+
+    result = await handler.handle(command)
     if result == True:
-        return login
-    else:
-        return JSONResponse(content={'message': 'create login problem encountered'}, status_code=500)
+        return req
+    
+    return JSONResponse(content=jsonable_encoder({'message: Erro ao tentar criar novo login'}), status_code=500)
 
+@router.put("/update")
+async def update(req: LoginReq, sess: Session = Depends(sess_db)):
+    handler = UpdateLoginCommandHandler(sess)
+    body = req.dict()
 
-@router.patch("/login/update")
-async def update_login(id: int, req: LoginReq, sess: Session = Depends(sess_db)):
-    login_dict = req.dict(exclude_unset=True)
-    repo: LoginRepository = LoginRepository(sess)
-    result = repo.update_login(id, login_dict)
-    if result:
-        return JSONResponse(content={'message': 'login updated successfully'}, status_code=201)
-    else:
-        return JSONResponse(content={'message': 'update login error'}, status_code=500)
+    command = Command()
+    command.details = body
 
+    result = await handler.handle(command)
+    if result == True:
+        return req
+    
+    return JSONResponse(content=jsonable_encoder({'message: Erro ao tentar criar novo login'}), status_code=500)
 
-@router.delete("/login/delete/{id}")
-async def delete_login(id: int, sess: Session = Depends(sess_db)):
-    repo: LoginRepository = LoginRepository(sess)
-    result = repo.delete_login(id)
-    if result:
-        return JSONResponse(content={'message': 'login deleted successfully'}, status_code=201)
-    else:
-        return JSONResponse(content={'message': 'delete login error'}, status_code=500)
+@router.delete("/delete/{id}")
+async def delete(id: int, sess: Session = Depends(sess_db)):
+    handler = DeleteLoginCommandHandler(sess)
 
-
-@router.get("/login/list")
-async def list_login(sess: Session = Depends(sess_db)):
-    repo: LoginRepository = LoginRepository(sess)
-    result = repo.get_all_login()
-    return result
-
-
-@router.get("/login/get/{id}")
-async def get_login(id: int, sess: Session = Depends(sess_db)):
-    repo: LoginRepository = LoginRepository(sess)
-    result = repo.get_login(id)
-    return result
+    result = await handler.handle(id)
+    if result == True:
+        return JSONResponse(content={}, status_code=201)
+    
+    return JSONResponse(content=jsonable_encoder({'message: Erro ao tentar criar novo login'}), status_code=500)
